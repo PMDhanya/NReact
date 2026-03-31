@@ -1,0 +1,49 @@
+{
+  "name": "nreact",
+  "version": "1.0.0",
+  "description": "This is Nreact",
+  "keywords": [
+    "react",
+    "Nreact"
+  ],
+  "homepage": "https://github.com/PMDhanya/NReact#readme",
+  "bugs": {
+    "url": "https://github.com/PMDhanya/NReact/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PMDhanya/NReact.git"
+  },
+  "license": "ISC",
+  "author": "dhanya",
+  "type": "commonjs",
+  "scripts": {
+    "start": "parcel index.html",
+    "build": "parcel build index.html",
+    "test": "jest --passWithNoTests",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
+    "@playwright/test": "^1.58.2",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.3.5",
+    "autoprefixer": "^10.4.27",
+    "babel-jest": "^30.3.0",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
+    "parcel": "^2.16.4",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "@tailwindcss/postcss": "^4.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^6.30.3"
+  }
+}
