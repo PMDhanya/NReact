@@ -2,6 +2,7 @@ import {useState,useEffect} from "react";
 import {useParams, useLocation, useOutletContext} from "react-router-dom";
 import Shimmer from "./src/components/Shimmer";
 import mockMenuData from "./mockMenuData";
+import MenuChatbot from "./src/components/MenuChatbot";
 
 const MENU_API = "https://www.swiggy.com/dapi/menu/pl?page-type=REGULAR_MENU&complete-menu=true&lat=17.4400802&lng=78.3489168&restaurantId=";
 
@@ -91,7 +92,7 @@ const RestaurantMenu=()=>{
     const {resId}=useParams();
     const location = useLocation();
     const resName = location.state?.resName || "";
-    const { addToCart, decreaseCartItem, getItemQuantity } = useOutletContext();
+    const { addToCart, decreaseCartItem, getItemQuantity, cartItems } = useOutletContext();
 
     useEffect(()=>{fetchMenu();},[]);
 
@@ -261,8 +262,12 @@ const RestaurantMenu=()=>{
                         </ul>
                     )}
                 </div>
-            ))}
-        </div>
+            ))}            <MenuChatbot
+                menuCategories={menuCategories}
+                resName={name}
+                addToCart={addToCart}
+                cartItems={cartItems}
+            />        </div>
     );
 };
 export default RestaurantMenu;
