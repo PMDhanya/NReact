@@ -4,6 +4,8 @@ import Shimmer from "./src/components/Shimmer";
 import mockMenuData from "./mockMenuData";
 import MenuChatbot from "./src/components/MenuChatbot";
 
+const DISH_IMG = (id) => `https://picsum.photos/seed/${id}/80/80`;
+
 const MENU_API = "https://www.swiggy.com/dapi/menu/pl?page-type=REGULAR_MENU&complete-menu=true&lat=17.4400802&lng=78.3489168&restaurantId=";
 
 const parseMenuItem = (itemCard) => {
@@ -17,6 +19,8 @@ const parseMenuItem = (itemCard) => {
         isVeg: info.isVeg === 1,
         description: info.description || "",
         ratingCount: Number(info?.ratings?.aggregatedRating?.ratingCountV2 || 0),
+        imageId: info.imageId || "",
+        image: "",   // live API items don't carry our local image; fallback handled in JSX
     };
 };
 
@@ -174,7 +178,24 @@ const RestaurantMenu=()=>{
     return (
         <div className="menu">
             <div className="menu-header">
-                <h1>{name}</h1>
+                <div className="menu-header-top">
+                    <h1>{name}</h1>
+                    <button
+                        className="share-btn"
+                        onClick={async () => {
+                            const shareData = { title: name, text: `Check out ${name} on nReact Foods!`, url: window.location.href };
+                            if (navigator.share) {
+                                try { await navigator.share(shareData); } catch {}
+                            } else {
+                                navigator.clipboard.writeText(window.location.href);
+                                alert("Link copied to clipboard!");
+                            }
+                        }}
+                        aria-label="Share this restaurant"
+                    >
+                        🔗 Share
+                    </button>
+                </div>
                 <p className="menu-cuisines">{cuisines?.join(", ")}</p>
                 <div className="menu-meta">
                     <span className="menu-rating">★ {avgRating} ({totalRatingsString})</span>
@@ -254,9 +275,24 @@ const RestaurantMenu=()=>{
                                             )}
                                         </div>
                                     </div>
-                                    {item.description && (
-                                        <p className="menu-item-desc">{item.description}</p>
-                                    )}
+                                    <div className="menu-item-body">
+                                        <img
+                                            className="menu-item-img"
+                                            src={
+                                                item.image
+                                                    ? item.image
+                                                    : item.imageId
+                                                        ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_208,h_208/${item.imageId}`
+                                                        : DISH_IMG(item.id)
+                                            }
+                                            alt={item.name}
+                                            loading="lazy"
+                                            onError={(e) => { e.currentTarget.src = DISH_IMG(item.id); }}
+                                        />
+                                        {item.description && (
+                                            <p className="menu-item-desc">{item.description}</p>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>

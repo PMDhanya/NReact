@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import {useState,useEffect} from "react";
 import Shimmer from "./src/components/Shimmer"; 
-import { createBrowserRouter,Outlet,RouterProvider, useOutletContext, Navigate, useLocation} from "react-router-dom";
+import { createBrowserRouter,Outlet,RouterProvider, useOutletContext, Navigate, useLocation, useNavigate} from "react-router-dom";
 import About from "./about";
 import Contact from "./contact";
 import Error from "./src/components/Error"; 
@@ -11,6 +11,10 @@ import { Link } from "react-router-dom";
 import RestaurantMenu from "./RestaurantMenu";
 import useOnlineStatus from "./useOnlineStatus";
 import { lazy,Suspense } from "react";
+import Toast from "./src/components/Toast";
+import LoginModal from "./src/components/LoginModal";
+import UserProfile from "./src/components/UserProfile";
+import Footer from "./src/components/Footer";
 
 
 // const heading=React.createElement("h1",{id:"heading",abc:"xyz"},"Hello, nReact!");
@@ -58,8 +62,7 @@ import { lazy,Suspense } from "react";
 // const root = createRoot(document.getElementById("root"));
 // root.render(<HeadingComponent />);
 
-const Header=({ cartCount })=>{
-  const [btnName,setBtnName]=useState("Login");
+const Header=({ cartCount, user, onLoginClick, onLogout, darkMode, onToggleDark })=>{
   const onlineStatus = useOnlineStatus();
     return(
         <div className="header">
@@ -74,8 +77,17 @@ const Header=({ cartCount })=>{
                     <li><Link to="/contact">Contact</Link></li>
                     <li><Link to="/grocery">Grocery</Link></li>
                     <li className="cart-link"><Link to="/cart">Cart ({cartCount})</Link></li>
-                    <button className="login"onClick={()=>{
-                        setBtnName(btnName==="Login"?"Logout":"Login")}}>{btnName}</button>
+                    {user ? (
+                        <>
+                            <li><Link to="/profile" className="header-profile-link">👤 {user.name}</Link></li>
+                            <button className="login" onClick={onLogout}>Logout</button>
+                        </>
+                    ) : (
+                        <button className="login" onClick={onLoginClick}>Login</button>
+                    )}
+                    <button className="dark-toggle" onClick={onToggleDark} aria-label="Toggle dark mode" title="Toggle dark mode">
+                        {darkMode ? "☀️" : "🌙"}
+                    </button>
                 </ul>
             </div>
             </div>
@@ -341,19 +353,37 @@ const Header=({ cartCount })=>{
 
 
 
-const RestaurantCard=(props)=>{
-    const {resData} = props;
-    return (
-        <div className="res-card" style ={ {backgroundColor: "#f5e9f1"} }>
-            <img className="res-logo"
-            alt="res-logo"
-            src={`https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_660/${resData.info.cloudinaryImageId}`} />
-            <h3>{resData.info.name}</h3>
-            <h4>{resData.info.cuisines.join(", ")}</h4>
-            <h4>{resData.info.avgRating}</h4>
-            <h4>{resData.info.costForTwo}</h4>
-            <h4>{resData.info.sla.deliveryTime} mins</h4>
+const FALLBACK_IMG = (seed) => `https://picsum.photos/seed/${seed}/660/200`;
 
+const RestaurantCard = ({ resData, isFav, onToggleFav }) => {
+    const info = resData.info;
+    // Prefer localImage (Unsplash), fall back to Swiggy CDN, then picsum
+    const imgSrc = info.localImage
+        || (info.cloudinaryImageId
+            ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_660/${info.cloudinaryImageId}`
+            : FALLBACK_IMG(info.id));
+    return (
+        <div className="res-card" style={{ backgroundColor: "#f5e9f1" }}>
+            <div className="res-img-wrap">
+                <img
+                    className="res-logo"
+                    alt={info.name}
+                    src={imgSrc}
+                    onError={(e) => { e.currentTarget.src = FALLBACK_IMG(info.id); }}
+                />
+                <button
+                    className={`fav-btn ${isFav ? "fav-active" : ""}`}
+                    onClick={(e) => { e.preventDefault(); onToggleFav(info.id); }}
+                    aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
+                >
+                    {isFav ? "❤️" : "🤍"}
+                </button>
+            </div>
+            <h3>{info.name}</h3>
+            <h4>{info.cuisines.join(", ")}</h4>
+            <h4>{info.avgRating}</h4>
+            <h4>{info.costForTwo}</h4>
+            <h4>{info.sla.deliveryTime} mins</h4>
         </div>
     );
 };
@@ -361,104 +391,103 @@ const RestaurantCard=(props)=>{
 const FALLBACK_RESTAURANTS = [
   {
     info: {
-      id: "123456",
-      name: "Pizza Paradise",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2025/6/17/6def0f0f-9e6c-45c0-b5e6-05af750f27b5_795906.JPG",
-      cuisines: ["Pizza", "Italian", "Fast Food"],
-      avgRating: 4.3,
-      costForTwo: "Rs400 for two",
-      sla: { deliveryTime: 30 },
+      id: "123456", name: "Pizza Paradise",
+      localImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=660&q=80",
+      cuisines: ["Pizza", "Italian", "Pasta"], avgRating: 4.3,
+      costForTwo: "₹400 for two", veg: false, sla: { deliveryTime: 30 },
     },
   },
   {
     info: {
-      id: "234567",
-      name: "Burger Hub",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2024/6/24/acfcaacc-edf0-4189-8264-d614d312c0ee_740457.JPG",
-      cuisines: ["Burgers", "American", "Fast Food"],
-      avgRating: 4.6,
-      costForTwo: "Rs300 for two",
-      sla: { deliveryTime: 25 },
+      id: "234567", name: "Burger Hub",
+      localImage: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=660&q=80",
+      cuisines: ["Burgers", "American", "Shakes"], avgRating: 4.6,
+      costForTwo: "₹300 for two", veg: false, sla: { deliveryTime: 25 },
     },
   },
   {
     info: {
-      id: "345678",
-      name: "Green Bites",
-      cloudinaryImageId: "e0839ff574213e6f35b3899ebf1fc597",
-      cuisines: ["Healthy Food", "Salads", "Vegan"],
-      avgRating: 4.7,
-      costForTwo: "Rs250 for two",
-      sla: { deliveryTime: 20 },
+      id: "345678", name: "Green Bites",
+      localImage: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=660&q=80",
+      cuisines: ["Healthy Food", "Salads", "Vegan"], avgRating: 4.7,
+      costForTwo: "₹250 for two", veg: true, sla: { deliveryTime: 20 },
     },
   },
   {
     info: {
-      id: "456789",
-      name: "Spice Kingdom",
-      cloudinaryImageId: "rng/md/carousel/production/indian101",
-      cuisines: ["Indian", "North Indian", "Biryani"],
-      avgRating: 4.2,
-      costForTwo: "Rs500 for two",
-      sla: { deliveryTime: 35 },
+      id: "456789", name: "Spice Kingdom",
+      localImage: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=660&q=80",
+      cuisines: ["North Indian", "Mughlai", "Biryani"], avgRating: 4.2,
+      costForTwo: "₹500 for two", veg: false, sla: { deliveryTime: 35 },
     },
   },
   {
     info: {
-      id: "567890",
-      name: "Chinese Dragon",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2025/6/18/ba9f1f59-30d5-44de-afad-df6db8471ead_9648.jpg",
-      cuisines: ["Chinese", "Asian", "Thai"],
-      avgRating: 4.4,
-      costForTwo: "Rs350 for two",
-      sla: { deliveryTime: 28 },
+      id: "567890", name: "Chinese Dragon",
+      localImage: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=660&q=80",
+      cuisines: ["Chinese", "Pan-Asian", "Noodles"], avgRating: 4.4,
+      costForTwo: "₹350 for two", veg: false, sla: { deliveryTime: 28 },
     },
   },
   {
     info: {
-      id: "678901",
-      name: "Dessert Delight",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2024/11/8/731001f1-f1c4-4f5f-849f-79a697cb0b72_390173.jpg",
-      cuisines: ["Desserts", "Ice Cream", "Bakery"],
-      avgRating: 4.6,
-      costForTwo: "Rs200 for two",
-      sla: { deliveryTime: 22 },
+      id: "678901", name: "Dessert Delight",
+      localImage: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=660&q=80",
+      cuisines: ["Desserts", "Ice Cream", "Waffles"], avgRating: 4.6,
+      costForTwo: "₹200 for two", veg: true, sla: { deliveryTime: 22 },
     },
   },
   {
     info: {
-      id: "789012",
-      name: "Sushi Station",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2024/6/24/acfcaacc-edf0-4189-8264-d614d312c0ee_740457.JPG",
-      cuisines: ["Japanese", "Sushi", "Asian"],
-      avgRating: 4.8,
-      costForTwo: "Rs800 for two",
-      sla: { deliveryTime: 40 },
+      id: "789012", name: "Sushi Station",
+      localImage: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=660&q=80",
+      cuisines: ["Japanese", "Sushi", "Ramen"], avgRating: 4.8,
+      costForTwo: "₹800 for two", veg: false, sla: { deliveryTime: 40 },
     },
   },
   {
     info: {
-      id: "890123",
-      name: "South Spice",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2025/6/17/6def0f0f-9e6c-45c0-b5e6-05af750f27b5_795906.JPG",
-      cuisines: ["South Indian", "Dosa", "Idli"],
-      avgRating: 4.5,
-      costForTwo: "Rs300 for two",
-      sla: { deliveryTime: 25 },
+      id: "890123", name: "South Spice",
+      localImage: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=660&q=80",
+      cuisines: ["South Indian", "Kerala", "Andhra"], avgRating: 4.5,
+      costForTwo: "₹300 for two", veg: true, sla: { deliveryTime: 25 },
     },
   },
   {
     info: {
-      id: "901234",
-      name: "Pasta Palace",
-      cloudinaryImageId: "RX_THUMBNAIL/IMAGES/VENDOR/2025/10/17/7bd350a8-55e7-459b-83a2-e250e670d194_14558.JPG",
-      cuisines: ["Italian", "Pasta", "Continental"],
-      avgRating: 4.1,
-      costForTwo: "Rs450 for two",
-      sla: { deliveryTime: 32 },
+      id: "901234", name: "Pasta Palace",
+      localImage: "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=660&q=80",
+      cuisines: ["Italian", "Pasta", "Continental"], avgRating: 4.1,
+      costForTwo: "₹450 for two", veg: false, sla: { deliveryTime: 32 },
+    },
+  },
+  {
+    info: {
+      id: "112233", name: "The Grill House",
+      localImage: "https://images.unsplash.com/photo-1544025162-d76694265947?w=660&q=80",
+      cuisines: ["BBQ", "Grills", "American"], avgRating: 4.5,
+      costForTwo: "₹600 for two", veg: false, sla: { deliveryTime: 38 },
+    },
+  },
+  {
+    info: {
+      id: "223344", name: "Taco Loco",
+      localImage: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=660&q=80",
+      cuisines: ["Mexican", "Tex-Mex", "Burritos"], avgRating: 4.3,
+      costForTwo: "₹350 for two", veg: false, sla: { deliveryTime: 27 },
+    },
+  },
+  {
+    info: {
+      id: "334455", name: "The Waffle Co.",
+      localImage: "https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=660&q=80",
+      cuisines: ["Waffles", "Pancakes", "Café"], avgRating: 4.4,
+      costForTwo: "₹280 for two", veg: true, sla: { deliveryTime: 22 },
     },
   },
 ];
+
+const PAGE_SIZE = 6;
 
 let Body=()=>{
     const [resList,setResList]=React.useState([]);
@@ -467,6 +496,8 @@ let Body=()=>{
     const [showVegOnly, setShowVegOnly] = React.useState(false);
     const [showFastDelivery, setShowFastDelivery] = React.useState(false);
     const [showBudgetFriendly, setShowBudgetFriendly] = React.useState(false);
+    const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
+    const { favourites = [], toggleFav = () => {} } = useOutletContext() || {};
                     
 useEffect(()=>{fetchData()},[]);
 
@@ -586,8 +617,23 @@ return (
           }}>Clear Filters</button>
         </div>
         <div className="restaurant-container">
-            {filteredResList.map((restaurant)=>(<Link key={restaurant.info.id} to={"/restaurants/" + restaurant.info.id} state={{resName: restaurant.info.name}} style={{textDecoration: "none", color: "inherit"}}><RestaurantCard resData={restaurant} /></Link>))}
+            {filteredResList.slice(0, visibleCount).map((restaurant)=>(
+                <Link key={restaurant.info.id} to={"/restaurants/" + restaurant.info.id} state={{resName: restaurant.info.name}} style={{textDecoration: "none", color: "inherit"}}>
+                    <RestaurantCard
+                        resData={restaurant}
+                        isFav={favourites.includes(restaurant.info.id)}
+                        onToggleFav={toggleFav}
+                    />
+                </Link>
+            ))}
         </div>
+        {visibleCount < filteredResList.length && (
+            <div className="load-more-wrap">
+                <button className="load-more-btn" onClick={() => setVisibleCount((p) => p + PAGE_SIZE)}>
+                    Load More Restaurants
+                </button>
+            </div>
+        )}
         </div>
     );
 };
@@ -647,20 +693,43 @@ const Cart = () => {
   );
 };
 
+const PROMOS = { "SAVE10": 10, "WELCOME20": 20, "NREACT15": 15 };
+
 const Checkout = () => {
   const outletContext = useOutletContext() || {};
   const cartItems = outletContext.cartItems || {};
-  const clearCart = outletContext.clearCart || (() => {});
+  const placeOrder = outletContext.placeOrder || (() => {});
+  const addresses = outletContext.addresses || [];
   const cartItemList = Object.values(cartItems);
-  const [selectedAddress, setSelectedAddress] = useState("home");
+  const DEFAULT_ADDRESSES = [
+    { label: "Home", value: "Madhapur, Hyderabad" },
+    { label: "Work", value: "HITEC City, Hyderabad" },
+  ];
+  const allAddresses = addresses.length > 0 ? addresses : DEFAULT_ADDRESSES;
+  const [selectedAddressIdx, setSelectedAddressIdx] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState("upi");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderMeta, setOrderMeta] = useState(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState("");
+
+  const applyPromo = () => {
+    const code = promoCode.trim().toUpperCase();
+    if (PROMOS[code]) {
+      setAppliedPromo({ code, pct: PROMOS[code] });
+      setPromoError("");
+    } else {
+      setAppliedPromo(null);
+      setPromoError("Invalid promo code. Try SAVE10, WELCOME20 or NREACT15");
+    }
+  };
 
   const subtotal = cartItemList.reduce((total, item) => total + item.price * item.quantity, 0);
+  const discount = appliedPromo ? Math.round(subtotal * appliedPromo.pct / 100) : 0;
   const deliveryFee = cartItemList.length > 0 ? 40 : 0;
-  const taxes = Math.round(subtotal * 0.05);
-  const grandTotal = subtotal + deliveryFee + taxes;
+  const taxes = Math.round((subtotal - discount) * 0.05);
+  const grandTotal = subtotal - discount + deliveryFee + taxes;
 
   if (cartItemList.length === 0 && !orderPlaced) {
     return <Navigate to="/cart" replace />;
@@ -685,26 +754,19 @@ const Checkout = () => {
       <div className="checkout-layout">
         <div className="checkout-block">
           <h3>Delivery Address</h3>
-          <label className="checkout-option">
-            <input
-              type="radio"
-              name="address"
-              value="home"
-              checked={selectedAddress === "home"}
-              onChange={(e) => setSelectedAddress(e.target.value)}
-            />
-            <span>Home - Madhapur, Hyderabad</span>
-          </label>
-          <label className="checkout-option">
-            <input
-              type="radio"
-              name="address"
-              value="work"
-              checked={selectedAddress === "work"}
-              onChange={(e) => setSelectedAddress(e.target.value)}
-            />
-            <span>Work - HITEC City, Hyderabad</span>
-          </label>
+          {allAddresses.map((addr, i) => (
+            <label key={i} className="checkout-option">
+              <input
+                type="radio"
+                name="address"
+                value={i}
+                checked={selectedAddressIdx === i}
+                onChange={() => setSelectedAddressIdx(i)}
+              />
+              <span>{addr.label} - {addr.value}</span>
+            </label>
+          ))}
+          <Link to="/profile" className="checkout-manage-addr">+ Manage Addresses</Link>
 
           <h3>Payment Method</h3>
           <label className="checkout-option">
@@ -748,21 +810,31 @@ const Checkout = () => {
             </div>
           ))}
           <hr />
+          {/* Promo code */}
+          <div className="promo-row">
+            <input
+              className="promo-input"
+              placeholder="Promo code (e.g. SAVE10)"
+              value={promoCode}
+              onChange={(e) => { setPromoCode(e.target.value); setPromoError(""); }}
+            />
+            <button className="promo-btn" onClick={applyPromo}>Apply</button>
+          </div>
+          {promoError && <p className="promo-error">{promoError}</p>}
+          {appliedPromo && <p className="promo-success">✅ {appliedPromo.code} applied — {appliedPromo.pct}% off!</p>}
           <div className="checkout-row"><span>Subtotal</span><span>Rs{subtotal}</span></div>
+          {discount > 0 && <div className="checkout-row promo-discount-row"><span>Discount ({appliedPromo.pct}%)</span><span>-Rs{discount}</span></div>}
           <div className="checkout-row"><span>Delivery Fee</span><span>Rs{deliveryFee}</span></div>
-          <div className="checkout-row"><span>Taxes</span><span>Rs{taxes}</span></div>
+          <div className="checkout-row"><span>Taxes (5%)</span><span>Rs{taxes}</span></div>
           <div className="checkout-total"><span>Total</span><span>Rs{grandTotal}</span></div>
           <button
             className="place-order-btn"
             onClick={() => {
               const generatedOrderId = `NR${Date.now().toString().slice(-6)}`;
-              setOrderMeta({
-                orderId: generatedOrderId,
-                etaMinutes: 30,
-                totalAmount: grandTotal,
-                addressLabel: selectedAddress === "home" ? "Home - Madhapur, Hyderabad" : "Work - HITEC City, Hyderabad",
-              });
-              clearCart();
+              const selectedAddr = allAddresses[selectedAddressIdx];
+              const addressLabel = `${selectedAddr.label} - ${selectedAddr.value}`;
+              setOrderMeta({ orderId: generatedOrderId, etaMinutes: 30, totalAmount: grandTotal, addressLabel });
+              placeOrder({ orderId: generatedOrderId, totalAmount: grandTotal, addressLabel, items: cartItemList, paymentMethod: selectedPayment });
               setOrderPlaced(true);
             }}
           >
@@ -787,20 +859,19 @@ const TrackOrder = () => {
   const passedState = location.state || {};
   const [activeStep, setActiveStep] = useState(0);
   const [etaMinutes, setEtaMinutes] = useState(Number(passedState.etaMinutes || 30));
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const isDelivered = activeStep === TRACKING_STEPS.length - 1;
 
   useEffect(() => {
     const statusTimer = setInterval(() => {
       setActiveStep((prev) => (prev < TRACKING_STEPS.length - 1 ? prev + 1 : prev));
     }, 7000);
-
     const etaTimer = setInterval(() => {
       setEtaMinutes((prev) => (prev > 0 ? prev - 1 : 0));
     }, 60000);
-
-    return () => {
-      clearInterval(statusTimer);
-      clearInterval(etaTimer);
-    };
+    return () => { clearInterval(statusTimer); clearInterval(etaTimer); };
   }, []);
 
   return (
@@ -822,51 +893,145 @@ const TrackOrder = () => {
           ))}
         </div>
       </div>
+
+      {/* Review panel — visible only after delivery */}
+      {isDelivered && (
+        <div className="review-card">
+          {reviewSubmitted ? (
+            <div className="review-thankyou">
+              <span>🎉</span>
+              <h3>Thanks for your review!</h3>
+              <p>Your feedback helps others discover great food.</p>
+            </div>
+          ) : (
+            <>
+              <h3>How was your experience?</h3>
+              <div className="review-stars">
+                {[1,2,3,4,5].map((s) => (
+                  <button
+                    key={s}
+                    className={`star-btn ${rating >= s ? "star-active" : ""}`}
+                    onClick={() => setRating(s)}
+                    aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
+                  >★</button>
+                ))}
+              </div>
+              <textarea
+                className="review-textarea"
+                rows={3}
+                placeholder="Tell us about your experience (optional)"
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+              />
+              <button
+                className="review-submit-btn"
+                disabled={rating === 0}
+                onClick={() => setReviewSubmitted(true)}
+              >
+                Submit Review
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
+  );
+};
+
+// ── Profile page wrapper ─────────────────────────────────────────────────────
+const ProfilePage = () => {
+  const navigate = useNavigate();
+  const outletContext = useOutletContext() || {};
+  const user = outletContext.user;
+  const orders = outletContext.orders || [];
+  const addresses = outletContext.addresses || [];
+  const addAddress = outletContext.addAddress || (() => {});
+  const deleteAddress = outletContext.deleteAddress || (() => {});
+  const logout = outletContext.logout || (() => {});
+
+  if (!user) {
+    return (
+      <div className="profile-not-logged">
+        <span aria-hidden="true">🔒</span>
+        <h2>Please sign in to view your profile</h2>
+        <Link to="/" className="cart-cta" style={{ display: "inline-block", marginTop: "14px" }}>Back to Home</Link>
+      </div>
+    );
+  }
+
+  return (
+    <UserProfile
+      user={user}
+      orders={orders}
+      addresses={addresses}
+      onAddAddress={addAddress}
+      onDeleteAddress={deleteAddress}
+      onLogout={() => { logout(); navigate("/"); }}
+    />
   );
 };
 
 const Grocery = lazy(() => import("./src/components/Grocery"));
 
 const AppLayout=()=>{
+  // ── Cart ─────────────────────────────────────────────────────────────────
   const [cartItems, setCartItems] = useState(() => {
-    try {
-      const cachedCart = localStorage.getItem("nreact_cart");
-      return cachedCart ? JSON.parse(cachedCart) : {};
-    } catch (error) {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem("nreact_cart") || "null") || {}; } catch { return {}; }
   });
+
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nreact_user") || "null"); } catch { return null; }
+  });
+
+  // ── Orders ───────────────────────────────────────────────────────────────
+  const [orders, setOrders] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nreact_orders") || "null") || []; } catch { return []; }
+  });
+
+  // ── Saved addresses ──────────────────────────────────────────────────────
+  const [addresses, setAddresses] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nreact_addresses") || "null") || []; } catch { return []; }
+  });
+
+  // ── Toasts ───────────────────────────────────────────────────────────────
+  const [toasts, setToasts] = useState([]);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("nreact_cart", JSON.stringify(cartItems));
   }, [cartItems]);
 
+  // ── Toast helpers ─────────────────────────────────────────────────────────
+  const addToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  };
+  const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  // ── Auth handlers ─────────────────────────────────────────────────────────
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem("nreact_user", JSON.stringify(userData));
+    addToast(`Welcome, ${userData.name}! 👋`, "success");
+  };
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("nreact_user");
+    addToast("You have been signed out.", "info");
+  };
+
+  // ── Cart handlers ─────────────────────────────────────────────────────────
   const addToCart = (item) => {
+    const isNew = !cartItems[String(item.id)];
     setCartItems((prev) => {
       const itemKey = String(item.id);
       const existingItem = prev[itemKey];
-
-      if (existingItem) {
-        return {
-          ...prev,
-          [itemKey]: {
-            ...existingItem,
-            quantity: existingItem.quantity + 1,
-          },
-        };
-      }
-
-      return {
-        ...prev,
-        [itemKey]: {
-          id: item.id,
-          name: item.name,
-          price: item.price || 0,
-          quantity: 1,
-        },
-      };
+      if (existingItem) return { ...prev, [itemKey]: { ...existingItem, quantity: existingItem.quantity + 1 } };
+      return { ...prev, [itemKey]: { id: item.id, name: item.name, price: item.price || 0, quantity: 1 } };
     });
+    if (isNew) addToast(`"${item.name}" added to cart 🛒`, "success");
   };
 
   const decreaseCartItem = (itemId) => {
@@ -874,20 +1039,8 @@ const AppLayout=()=>{
       const itemKey = String(itemId);
       const existingItem = prev[itemKey];
       if (!existingItem) return prev;
-
-      if (existingItem.quantity === 1) {
-        const nextItems = { ...prev };
-        delete nextItems[itemKey];
-        return nextItems;
-      }
-
-      return {
-        ...prev,
-        [itemKey]: {
-          ...existingItem,
-          quantity: existingItem.quantity - 1,
-        },
-      };
+      if (existingItem.quantity === 1) { const n = { ...prev }; delete n[itemKey]; return n; }
+      return { ...prev, [itemKey]: { ...existingItem, quantity: existingItem.quantity - 1 } };
     });
   };
 
@@ -895,11 +1048,69 @@ const AppLayout=()=>{
   const cartCount = Object.values(cartItems).reduce((total, item) => total + item.quantity, 0);
   const clearCart = () => setCartItems({});
 
-    return <div className="app">
-    <Header cartCount={cartCount} />
-    <Outlet context={{ addToCart, decreaseCartItem, getItemQuantity, cartItems, clearCart }} />
-         
-    </div>
+  // ── Order handler ─────────────────────────────────────────────────────────
+  const placeOrder = (orderDetails) => {
+    const order = {
+      ...orderDetails,
+      date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+    };
+    setOrders((prev) => {
+      const updated = [order, ...prev];
+      localStorage.setItem("nreact_orders", JSON.stringify(updated));
+      return updated;
+    });
+    clearCart();
+    addToast("Order placed successfully! 🎉", "success");
+  };
+
+  // ── Address handlers ─────────────────────────────────────────────────────
+  const addAddress = (addr) => {
+    setAddresses((prev) => {
+      const updated = [...prev, addr];
+      localStorage.setItem("nreact_addresses", JSON.stringify(updated));
+      return updated;
+    });
+    addToast("Address saved!", "success");
+  };
+
+  const deleteAddress = (index) => {
+    setAddresses((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      localStorage.setItem("nreact_addresses", JSON.stringify(updated));
+      return updated;
+    });
+    addToast("Address removed.", "info");
+  };
+
+  // ── Favourites ───────────────────────────────────────────────────────────
+  const [favourites, setFavourites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("nreact_favs") || "null") || []; } catch { return []; }
+  });
+
+  const toggleFav = (resId) => {
+    setFavourites((prev) => {
+      const next = prev.includes(resId) ? prev.filter((id) => id !== resId) : [...prev, resId];
+      localStorage.setItem("nreact_favs", JSON.stringify(next));
+      addToast(next.includes(resId) ? "Added to favourites ❤️" : "Removed from favourites", "info");
+      return next;
+    });
+  };
+
+  // ── Dark mode ────────────────────────────────────────────────────────────
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("nreact_dark") === "true");
+
+  useEffect(() => {
+    document.body.classList.toggle("dark", darkMode);
+    localStorage.setItem("nreact_dark", String(darkMode));
+  }, [darkMode]);
+
+  return <div className="app">
+    <Header cartCount={cartCount} user={user} onLoginClick={() => setShowLogin(true)} onLogout={handleLogout} darkMode={darkMode} onToggleDark={() => setDarkMode((p) => !p)} />
+    <Outlet context={{ addToCart, decreaseCartItem, getItemQuantity, cartItems, clearCart, addToast, user, orders, addresses, addAddress, deleteAddress, placeOrder, logout: handleLogout, favourites, toggleFav }} />
+    <Footer />
+    <Toast toasts={toasts} removeToast={removeToast} />
+    {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLogin={handleLogin} />}
+  </div>
 };
 const appRouter=createBrowserRouter([
   {
@@ -937,6 +1148,10 @@ const appRouter=createBrowserRouter([
 {
   path:"track-order",
   element:<TrackOrder />
+},
+{
+  path:"profile",
+  element:<ProfilePage />
 }],
   errorElement:<Error />,
 },

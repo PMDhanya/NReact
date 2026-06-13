@@ -31,10 +31,7 @@ const VALUES = [
 ];
 
 const TEAM = [
-    { name: "Dhanya PM", role: "Founder & CEO", avatar: "👩‍💼" },
-    { name: "Arjun Reddy", role: "Head of Engineering", avatar: "👨‍💻" },
-    { name: "Priya Nair", role: "Design Lead", avatar: "👩‍🎨" },
-    { name: "Karan Mehta", role: "Head of Partnerships", avatar: "🤝" },
+    { name: "Dhanya PM", role: "Lead", avatar: "👩‍💼" },
 ];
 
 class About extends React.Component {
@@ -45,7 +42,7 @@ class About extends React.Component {
                 <div className="about-hero">
                     <h1>About nReact Foods</h1>
                     <p>
-                        We started in 2021 with a simple mission — make great food accessible to
+                        We started with a simple mission — make great food accessible to
                         everyone, from anywhere, in minutes. Today we connect thousands of
                         restaurants with hungry customers across the city.
                     </p>
