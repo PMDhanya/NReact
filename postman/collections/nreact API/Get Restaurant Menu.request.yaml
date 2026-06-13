@@ -1,0 +1,55 @@
+$kind: http-request
+name: Get Restaurant Menu
+method: GET
+url: '{{swiggyBaseUrl}}/dapi/menu/pl'
+order: 2000
+queryParams:
+  - key: page-type
+    value: REGULAR_MENU
+    description: Menu page type
+  - key: complete-menu
+    value: 'true'
+    description: Fetch the complete menu
+  - key: lat
+    value: '{{menuLat}}'
+    description: Latitude for menu fetch
+  - key: lng
+    value: '{{menuLng}}'
+    description: Longitude for menu fetch
+  - key: restaurantId
+    value: '{{restaurantId}}'
+    description: >-
+      Restaurant ID — populated automatically by the Get Restaurant Listing
+      request, or set manually in the collection/environment variables
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Validate successful response
+      pm.test("Status code is 2xx", function () {
+          pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+
+      // Validate response is JSON
+      pm.test("Response is JSON", function () {
+          pm.response.to.have.header("Content-Type");
+          pm.expect(pm.response.headers.get("Content-Type")).to.include("json");
+      });
+
+      // Validate response body has menu data
+      pm.test("Response body has data property", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("data");
+      });
+
+      // Validate menu cards are present
+      pm.test("Menu cards are present", function () {
+          const json = pm.response.json();
+          const cards = json?.data?.cards;
+          pm.expect(cards).to.be.an("array").and.to.have.length.above(0);
+      });

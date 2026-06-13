@@ -1,0 +1,36 @@
+$kind: collection
+name: nreact API
+description: |-
+  API collection for the nreact React food-delivery app.
+
+  This project is a React SPA (served by Parcel on port 1234) with no local
+  server-side backend. All data is fetched from the Swiggy public DAPI.
+
+  Endpoints captured:
+  - GET /dapi/restaurants/list/v5  — restaurant listing (home page)
+  - GET /dapi/menu/pl              — restaurant menu by ID
+
+  The {{baseUrl}} variable points to the local Parcel dev server.
+  The {{swiggyBaseUrl}} variable points to the Swiggy DAPI host.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:1234'
+    description: Local Parcel dev server base URL
+  - key: swiggyBaseUrl
+    value: 'https://www.swiggy.com'
+    description: Swiggy public DAPI base URL
+  - key: lat
+    value: '17.3924982'
+    description: Latitude used for restaurant listing
+  - key: lng
+    value: '78.46796379999999'
+    description: Longitude used for restaurant listing
+  - key: menuLat
+    value: '17.4400802'
+    description: Latitude used for menu fetch
+  - key: menuLng
+    value: '78.3489168'
+    description: Longitude used for menu fetch
+  - key: restaurantId
+    value: '123456'
+    description: Restaurant ID for menu fetch (replace with a real ID)

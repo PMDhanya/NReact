@@ -1,0 +1,65 @@
+$kind: http-request
+name: Get Restaurant Listing
+method: GET
+url: '{{swiggyBaseUrl}}/dapi/restaurants/list/v5'
+order: 1000
+queryParams:
+  - key: lat
+    value: '{{lat}}'
+    description: Latitude for location-based restaurant search
+  - key: lng
+    value: '{{lng}}'
+    description: Longitude for location-based restaurant search
+  - key: is-seo-homepage-enabled
+    value: 'true'
+    description: SEO homepage flag used by the app
+  - key: page_type
+    value: DESKTOP_WEB_LISTING
+    description: Page type identifier
+headers:
+  - key: Accept
+    value: application/json
+  - key: Content-Type
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Validate successful response
+      pm.test("Status code is 2xx", function () {
+          pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+
+      // Validate response is JSON
+      pm.test("Response is JSON", function () {
+          pm.response.to.have.header("Content-Type");
+          pm.expect(pm.response.headers.get("Content-Type")).to.include("json");
+      });
+
+      // Validate response body structure
+      pm.test("Response body has data property", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("data");
+      });
+
+      // Optionally store the first restaurant ID for use in menu requests
+      pm.test("Restaurant list is present", function () {
+          const json = pm.response.json();
+          const cards = json?.data?.cards;
+          pm.expect(cards).to.be.an("array");
+          if (cards && cards.length > 0) {
+              // Walk cards to find a restaurant ID and store it
+              for (const card of cards) {
+                  const restaurants =
+                      card?.card?.card?.gridElements?.infoWithStyle?.restaurants;
+                  if (restaurants && restaurants.length > 0) {
+                      const firstId = restaurants[0]?.info?.id;
+                      if (firstId) {
+                          pm.collectionVariables.set("restaurantId", firstId);
+                          console.log("Stored restaurantId:", firstId);
+                          break;
+                      }
+                  }
+              }
+          }
+      });

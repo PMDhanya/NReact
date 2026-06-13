@@ -1,0 +1,39 @@
+name: nreact - Development
+values:
+  - key: baseUrl
+    value: 'http://localhost:1234'
+    enabled: true
+    type: default
+    description: Local Parcel dev server (run `npx parcel index.html`)
+  - key: swiggyBaseUrl
+    value: 'https://www.swiggy.com'
+    enabled: true
+    type: default
+    description: Swiggy public DAPI base URL
+  - key: lat
+    value: '17.3924982'
+    enabled: true
+    type: default
+    description: Latitude for restaurant listing (Hyderabad default)
+  - key: lng
+    value: '78.46796379999999'
+    enabled: true
+    type: default
+    description: Longitude for restaurant listing (Hyderabad default)
+  - key: menuLat
+    value: '17.4400802'
+    enabled: true
+    type: default
+    description: Latitude for menu fetch
+  - key: menuLng
+    value: '78.3489168'
+    enabled: true
+    type: default
+    description: Longitude for menu fetch
+  - key: restaurantId
+    value: '123456'
+    enabled: true
+    type: default
+    description: >-
+      Restaurant ID for menu fetch. Run "Get Restaurant Listing" first to
+      auto-populate this via the test script, or replace with a real ID.
